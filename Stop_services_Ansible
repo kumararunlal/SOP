@@ -2,6 +2,8 @@
 - name: Stop services and IIS App Pool on Windows servers
   hosts: windows
   gather_facts: no
+  become: yes
+  become_method: runas
   tasks:
 
     - name: Stop Thycotic Distributed Engine Service
@@ -14,6 +16,11 @@
         name: RabbitMQ
         state: stopped
 
+    - name: Stop SecretServer IIS Application Pool
+      win_iis_webapppool:
+        name: SecretServer
+        state: stopped
+
     - name: Stop MSSQLSERVER Service
       win_service:
         name: MSSQLSERVER
@@ -22,9 +29,4 @@
     - name: Stop SQLSERVERAGENT Service
       win_service:
         name: SQLSERVERAGENT
-        state: stopped
-
-    - name: Stop SecretServer IIS Application Pool
-      win_iis_webapppool:
-        name: SecretServer
         state: stopped
