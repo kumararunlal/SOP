@@ -1,0 +1,30 @@
+---
+- name: Stop services and IIS App Pool on Windows servers
+  hosts: windows
+  gather_facts: no
+  tasks:
+
+    - name: Stop Thycotic Distributed Engine Service
+      win_service:
+        name: Thycotic.DistributedEngine.Service
+        state: stopped
+
+    - name: Stop RabbitMQ Service
+      win_service:
+        name: RabbitMQ
+        state: stopped
+
+    - name: Stop MSSQLSERVER Service
+      win_service:
+        name: MSSQLSERVER
+        state: stopped
+
+    - name: Stop SQLSERVERAGENT Service
+      win_service:
+        name: SQLSERVERAGENT
+        state: stopped
+
+    - name: Stop SecretServer IIS Application Pool
+      win_iis_webapppool:
+        name: SecretServer
+        state: stopped
