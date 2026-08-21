@@ -1,0 +1,83 @@
+# ============================================================
+# Zabbix Agent Version Check - Remote Windows Servers
+# ============================================================
+
+# Input file containing server names
+$ServerList = "C:\Scripts\servers.txt"
+
+# Output CSV file
+$OutputFile = "C:\Scripts\Zabbix_Agent_Versions.csv"
+
+# Read server names
+$Servers = Get-Content $ServerList | Where-Object {
+    $_ -and $_.Trim() -ne ""
+}
+
+$Results = foreach ($Server in $Servers) {
+
+    Write-Host "Checking $Server ..." -ForegroundColor Cyan
+
+    try {
+
+        $Result = Invoke-Command -ComputerName $Server -ErrorAction Stop -ScriptBlock {
+
+            $RegistryPaths = @(
+                "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*",
+                "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*"
+            )
+
+            $Zabbix = Get-ItemProperty $RegistryPaths -ErrorAction SilentlyContinue |
+                Where-Object {
+                    $_.DisplayName -match "^Zabbix Agent" -or
+                    $_.DisplayName -match "^Zabbix Agent 2"
+                } |
+                Select-Object -First 1 DisplayName, DisplayVersion, Publisher
+
+            if ($Zabbix) {
+
+                [PSCustomObject]@{
+                    ServerName     = $env:COMPUTERNAME
+                    AgentName      = $Zabbix.DisplayName
+                    AgentVersion   = $Zabbix.DisplayVersion
+                    Publisher      = $Zabbix.Publisher
+                    Status         = "Installed"
+                }
+
+            }
+            else {
+
+                [PSCustomObject]@{
+                    ServerName     = $env:COMPUTERNAME
+                    AgentName      = "Not Found"
+                    AgentVersion   = "N/A"
+                    Publisher      = "N/A"
+                    Status         = "Not Installed"
+                }
+            }
+        }
+
+        $Result
+    }
+    catch {
+
+        [PSCustomObject]@{
+            ServerName     = $Server
+            AgentName      = "N/A"
+            AgentVersion   = "N/A"
+            Publisher      = "N/A"
+            Status         = "Connection Failed: $($_.Exception.Message)"
+        }
+    }
+}
+
+# Display results
+$Results | Format-Table -AutoSize
+
+# Export results to CSV
+$Results | Export-Csv -Path $OutputFile -NoTypeInformation
+
+Write-Host ""
+Write-Host "==================================================" -ForegroundColor Green
+Write-Host "Zabbix Agent version check completed." -ForegroundColor Green
+Write-Host "Report: $OutputFile" -ForegroundColor Green
+Write-Host "==================================================" -ForegroundColor Green
